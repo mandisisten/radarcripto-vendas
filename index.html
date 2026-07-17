@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar Cripto Sinais — Opere com Confluência</title>
+<meta name="description" content="Sistema com IA que varre 32 criptomoedas ao vivo na Binance Futures, cruza múltiplos indicadores técnicos e só avisa quando o sinal é forte de verdade — com entrada, stop e alvo prontos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e14; --bg2:#04070a; --panel:#111826; --panel2:#151d2e; --border:#1f2937;
+    --text:#e5eaf1; --muted:#8291a8; --green:#16c784; --green-d:#0d3d2c;
+    --red:#ea3943; --red-d:#3d1418; --amber:#f0b90b; --blue:#4f8ff7;
+    --mono:'JetBrains Mono',Consolas,monospace;
+    --display:'Big Shoulders',sans-serif;
+  }
+  *{box-sizing:border-box;min-width:0;}
+  html{scroll-behavior:smooth;}
+  html,body{overflow-x:hidden;max-width:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',Roboto,Arial,sans-serif;line-height:1.5;}
+  img,svg{max-width:100%;display:block;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px;}
+  a{color:inherit;}
+
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(10,14,20,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);}
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;}
+  .brand{display:flex;align-items:center;gap:6px;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .brand .bolt{color:var(--amber);flex-shrink:0;}
+  .topbar .cta-small{background:var(--amber);color:#132018;font-family:var(--display);font-weight:700;font-size:12.5px;letter-spacing:.3px;padding:8px 14px;border-radius:999px;text-decoration:none;white-space:nowrap;flex-shrink:0;}
+
+  /* ---------- background fx ---------- */
+  .bgfx{position:relative;overflow:hidden;}
+  .bgfx::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,#121d30 0%,#0a1220 45%,#04070a 100%);z-index:-2;}
+  .bgfx::after{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(58,74,99,.35) 1px,transparent 1px);background-size:26px 26px;z-index:-1;opacity:.5;}
+
+  /* ---------- hero ---------- */
+  .hero{padding:64px 0 40px;text-align:center;}
+  .badge-ai{display:inline-flex;align-items:center;gap:8px;background:#101a2a;border:1.5px solid rgba(79,143,247,.6);color:#8fbcff;font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:2.5px;padding:9px 20px;border-radius:999px;margin-bottom:22px;}
+  .badge-ai .dot{width:8px;height:8px;background:#8fbcff;transform:rotate(45deg);display:inline-block;}
+  .hero h1{font-family:var(--display);font-weight:800;font-size:clamp(38px,9vw,68px);line-height:1.02;margin:0 0 18px;letter-spacing:.2px;}
+  .hero h1 .accent{color:var(--green);display:block;}
+  .hero p.sub{color:var(--muted);font-size:clamp(15px,3.4vw,19px);max-width:560px;margin:0 auto 30px;}
+  .hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+  .btn-primary{background:linear-gradient(90deg,#ffd873,var(--amber));color:#132018;font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:.5px;padding:16px 38px;border-radius:999px;text-decoration:none;box-shadow:0 8px 30px rgba(240,185,11,.25);display:inline-block;}
+  .btn-ghost{border:1.5px solid var(--border);color:var(--text);font-family:var(--display);font-weight:600;font-size:17px;padding:15px 30px;border-radius:999px;text-decoration:none;display:inline-block;}
+  .microcopy{color:#5c6b80;font-family:var(--mono);font-size:12px;letter-spacing:1.5px;margin-top:6px;}
+  .kicker-strip{color:#5c6b80;font-family:var(--mono);font-size:12.5px;letter-spacing:2px;text-align:center;margin:34px 0 0;}
+
+  /* ---------- phone mockup ---------- */
+  .phone{width:290px;max-width:78vw;margin:46px auto 0;background:#000;border-radius:34px;padding:10px;box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 1px #232d3d;}
+  .phone .screen{background:var(--bg);border-radius:24px;overflow:hidden;padding:14px 12px 18px;}
+  .phone .notch{width:80px;height:5px;background:#1c2433;border-radius:3px;margin:2px auto 12px;}
+
+  /* ---------- mini card (recreated real UI) ---------- */
+  .mcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:9px;position:relative;overflow:hidden;}
+  .mcard.long{border-color:rgba(22,199,132,.55);}
+  .mcard.short{border-color:rgba(234,57,67,.55);}
+  .mcard .top{display:flex;justify-content:space-between;align-items:baseline;}
+  .mcard .sym{font-weight:700;font-size:12.5px;}
+  .mcard .sym small{color:var(--muted);font-weight:400;font-size:9.5px;}
+  .mcard .price{font-family:var(--mono);font-size:13.5px;font-weight:600;}
+  .mcard .subrow{display:flex;justify-content:space-between;color:var(--muted);font-size:9.5px;margin-top:2px;}
+  .mcard .chg-pos{color:var(--green);} .mcard .chg-neg{color:var(--red);}
+  .mcard .midrow{display:flex;justify-content:space-between;align-items:center;margin-top:7px;}
+  .mbadge{display:inline-block;padding:2px 7px;border-radius:5px;font-weight:700;font-size:9.5px;letter-spacing:.3px;}
+  .mbadge.LONG{background:var(--green-d);color:var(--green);}
+  .mbadge.SHORT{background:var(--red-d);color:var(--red);}
+  .mbadge.NEUTRO{background:#1c2433;color:var(--muted);}
+  .mconf{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .mconf b{color:var(--text);}
+  .mchips{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
+  .mchip{font-size:8.5px;padding:2px 5px;border-radius:4px;background:#1a2233;color:var(--muted);border:1px solid var(--border);}
+  .mchip.up{color:var(--green);border-color:rgba(22,199,132,.3);}
+  .mchip.down{color:var(--red);border-color:rgba(234,57,67,.3);}
+
+  /* ---------- big signal card ---------- */
+  .bigcard{background:var(--panel);border:1.5px solid rgba(22,199,132,.6);border-radius:14px;padding:18px 18px 16px;max-width:380px;margin:0 auto;}
+  .bigcard .top{display:flex;justify-content:space-between;align-items:baseline;}
+  .bigcard .sym{font-weight:700;font-size:19px;}
+  .bigcard .sym small{color:var(--muted);font-weight:400;font-size:13px;}
+  .bigcard .price{font-family:var(--mono);font-size:23px;font-weight:600;}
+  .bigcard .subrow{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:4px;}
+  .bigcard .midrow{display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px;}
+  .bcbadge{display:inline-block;padding:5px 13px;border-radius:6px;font-weight:700;font-size:15px;letter-spacing:.4px;background:var(--green-d);color:var(--green);}
+  .bconf{font-family:var(--mono);font-size:15px;color:var(--muted);}
+  .bconf b{color:var(--text);font-size:17px;}
+  .bchips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0;}
+  .bchip{font-size:12px;padding:4px 9px;border-radius:5px;background:#1a2233;color:var(--muted);border:1px solid var(--border);}
+  .bchip.up{color:var(--green);border-color:rgba(22,199,132,.35);}
+  .bchip.down{color:var(--red);border-color:rgba(234,57,67,.35);}
+  .tradebox{margin-top:12px;padding:12px 14px;background:var(--panel2);border-radius:9px;font-family:var(--mono);font-size:14px;}
+  .traderow{display:flex;justify-content:space-between;padding:4px 0;}
+  .traderow .lbl{color:var(--muted);}
+  .traderow.entry b{color:var(--text);}
+  .traderow.stop b{color:var(--red);}
+  .traderow.alvo b{color:var(--green);}
+  .traderow.rr b{color:var(--amber);}
+  .livepill{display:inline-flex;align-items:center;gap:6px;background:#0d3d2c;color:var(--green);font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:1.5px;padding:6px 12px;border-radius:999px;margin-bottom:14px;}
+  .livepill .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+
+  /* ---------- section shell ---------- */
+  section{padding:64px 0;}
+  .section-head{text-align:center;max-width:620px;margin:0 auto 42px;}
+  .eyebrow{color:var(--amber);font-family:var(--mono);font-weight:700;font-size:12.5px;letter-spacing:3px;margin-bottom:10px;}
+  .section-head h2{font-family:var(--display);font-weight:700;font-size:clamp(28px,5.5vw,42px);margin:0 0 12px;line-height:1.1;}
+  .section-head p{color:var(--muted);font-size:15.5px;margin:0;}
+
+  /* ---------- feature grid ---------- */
+  .fgrid{display:grid;grid-template-columns:1fr;gap:16px;}
+  .fcard{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px 22px;}
+  .fcard .ficon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;}
+  .fcard.c1 .ficon{background:rgba(79,143,247,.12);color:var(--blue);}
+  .fcard.c2 .ficon{background:rgba(22,199,132,.12);color:var(--green);}
+  .fcard.c3 .ficon{background:rgba(240,185,11,.12);color:var(--amber);}
+  .fcard.c4 .ficon{background:rgba(234,57,67,.12);color:var(--red);}
+  .fcard h3{font-family:var(--display);font-weight:700;font-size:19px;margin:0 0 8px;}
+  .fcard p{color:var(--muted);font-size:14px;margin:0;line-height:1.55;}
+
+  /* ---------- how it works ---------- */
+  .steps{counter-reset:step;display:grid;grid-template-columns:1fr;gap:0;max-width:640px;margin:0 auto;}
+  .step{display:flex;gap:18px;padding:22px 0;border-bottom:1px solid var(--border);}
+  .step:last-child{border-bottom:none;}
+  .step .num{counter-increment:step;font-family:var(--display);font-weight:800;font-size:30px;color:var(--amber);min-width:44px;}
+  .step h4{margin:0 0 6px;font-family:var(--display);font-weight:700;font-size:18px;}
+  .step p{margin:0;color:var(--muted);font-size:14px;}
+
+  /* ---------- trust ---------- */
+  .trust{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:32px 26px;max-width:760px;margin:0 auto;}
+  .trust ul{margin:0;padding:0;list-style:none;display:grid;gap:16px;}
+  .trust li{display:flex;gap:12px;align-items:flex-start;font-size:14.5px;color:var(--text);}
+  .trust li .chk{color:var(--green);font-weight:700;flex-shrink:0;}
+  .trust .caveat{margin-top:20px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:12.5px;line-height:1.6;}
+
+  /* ---------- final cta ---------- */
+  .finalcta{text-align:center;padding:70px 0 90px;}
+  .finalcta h2{font-family:var(--display);font-weight:800;font-size:clamp(30px,6vw,48px);margin:0 0 16px;}
+  .finalcta p{color:var(--muted);font-size:16px;max-width:480px;margin:0 auto 32px;}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--border);padding:30px 0;}
+  .disclaimer{color:#5c6b80;font-size:11.5px;line-height:1.7;max-width:760px;margin:0 auto 16px;text-align:center;}
+  .footer-brand{text-align:center;color:#3d4a5e;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;}
+
+  /* ---------- desktop ---------- */
+  @media (min-width:860px){
+    .wrap{padding:0 40px;}
+    .brand{font-size:18px;letter-spacing:.3px;}
+    .topbar .cta-small{font-size:14px;padding:9px 18px;}
+    .hero{padding:96px 0 60px;}
+    .hero-flex{display:flex;align-items:center;gap:60px;text-align:left;}
+    .hero-flex .hero-text{flex:1;}
+    .hero-flex .hero-text .badge-ai,.hero-flex .hero-text .hero-ctas,.hero-flex .hero-text .microcopy{justify-content:flex-start;}
+    .hero-flex .hero-text p.sub{margin:0 0 30px;}
+    .hero-flex .phone{margin:0;flex-shrink:0;}
+    .hero-ctas{justify-content:flex-start;}
+    .microcopy{text-align:left;}
+    .fgrid{grid-template-columns:repeat(4,1fr);}
+    .showcase-flex{display:flex;align-items:center;gap:60px;}
+    .showcase-flex>div{flex:1;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="bolt">⚡</span>Radar Cripto Sinais</div>
+    <a href="#comprar" class="cta-small">Testar agora</a>
+  </div>
+</div>
+
+<div class="bgfx">
+  <section class="hero">
+    <div class="wrap hero-flex">
+      <div class="hero-text">
+        <div class="badge-ai"><span class="dot"></span>SISTEMA COM IA</div>
+        <h1>Opere com<span class="accent">confluência.</span></h1>
+        <p class="sub">32 criptomoedas monitoradas ao vivo, 24 horas por dia, direto da Binance Futures. O sistema cruza múltiplos indicadores técnicos e só avisa quando o sinal é forte de verdade.</p>
+        <div class="hero-ctas">
+          <a href="#comprar" class="btn-primary">Quero começar</a>
+          <a href="#como-funciona" class="btn-ghost">Ver como funciona</a>
+        </div>
+        <div class="microcopy">SEM INSTALAR NADA · FUNCIONA DIRETO NO NAVEGADOR</div>
+      </div>
+
+      <div class="phone">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="mcard long">
+            <div class="top"><div class="sym">1000XEC<small>/USDT PERP</small></div><div class="price">0.007697</div></div>
+            <div class="subrow"><span class="chg-pos">24h: +22.92%</span><span>Vol: $133.2M</span></div>
+            <div class="midrow"><span class="mbadge LONG">LONG</span><span class="mconf">conf: <b>99%</b></span></div>
+            <div class="mchips">
+              <span class="mchip up">RSI 70</span><span class="mchip up">ADX 49</span><span class="mchip up">VWAP ✓</span>
+            </div>
+          </div>
+          <div class="mcard long">
+            <div class="top"><div class="sym">LUMIA<small>/USDT PERP</small></div><div class="price">0.09076</div></div>
+            <div class="subrow"><span class="chg-pos">24h: +17.70%</span><span>Vol: $74.4M</span></div>
+            <div class="midrow"><span class="mbadge LONG">LONG</span><span class="mconf">conf: <b>88%</b></span></div>
+            <div class="mchips">
+              <span class="mchip up">RSI 50</span><span class="mchip up">ADX 20</span><span class="mchip">HTF 4h ↑</span>
+            </div>
+          </div>
+          <div class="mcard">
+            <div class="top"><div class="sym">BTC<small>/USDT PERP</small></div><div class="price">64.487,2</div></div>
+            <div class="subrow"><span class="chg-neg">24h: -0,50%</span><span>Vol: $8652,9M</span></div>
+            <div class="midrow"><span class="mbadge NEUTRO">NEUTRO</span><span class="mconf">conf: <b>55%</b></span></div>
+            <div class="mchips">
+              <span class="mchip">RSI 54</span><span class="mchip down">ADX 17</span><span class="mchip">ATR 0,36%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kicker-strip">CONFLUÊNCIA DE INDICADORES · ENTRADA, STOP E ALVO AUTOMÁTICOS · DIÁRIO EM TEMPO REAL</div>
+  </section>
+</div>
+
+<section id="como-funciona">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">COMO FUNCIONA</div>
+      <h2>Tudo que um trader faria na mão, automático.</h2>
+      <p>O sistema roda a leitura técnica que você faria manualmente — só que em 32 ativos ao mesmo tempo, sem parar.</p>
+    </div>
+    <div class="fgrid">
+      <div class="fcard c1">
+        <div class="ficon">◎</div>
+        <h3>32 moedas, ao vivo</h3>
+        <p>Varredura contínua via WebSocket direto da Binance Futures, 24h por dia, sem precisar de chave de API.</p>
+      </div>
+      <div class="fcard c2">
+        <div class="ficon">◈</div>
+        <h3>Confluência real</h3>
+        <p>Cruza EMA, RSI, MACD, Bandas de Bollinger, ADX, VWAP e volume — só sinaliza quando várias confirmações batem juntas.</p>
+      </div>
+      <div class="fcard c3">
+        <div class="ficon">▤</div>
+        <h3>Entrada, stop e alvo</h3>
+        <p>Cada sinal já sai com os níveis calculados com base na volatilidade real do ativo (ATR), prontos pra operar.</p>
+      </div>
+      <div class="fcard c4">
+        <div class="ficon">◷</div>
+        <h3>Diário em tempo real</h3>
+        <p>Todo sinal fica registrado e é acompanhado automaticamente até bater o alvo ou o stop — sem precisar anotar nada.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="bgfx">
+  <section>
+    <div class="wrap showcase-flex">
+      <div>
+        <div class="livepill"><span class="dot"></span>SINAL REAL</div>
+        <div class="bigcard">
+          <div class="top"><div class="sym">1000XEC<small>/USDT PERP</small></div><div class="price">0.007697</div></div>
+          <div class="subrow"><span class="chg-pos" style="color:var(--green)">24h: +22.92%</span><span>Vol: $133.2M</span></div>
+          <div class="midrow"><span class="bcbadge">LONG</span><span class="bconf">conf: <b>99%</b></span></div>
+          <div class="bchips">
+            <span class="bchip up">RSI 70</span><span class="bchip up">ADX 49</span><span class="bchip up">VWAP ✓</span><span class="bchip">HTF 1d ↑</span>
+          </div>
+          <div class="tradebox">
+            <div class="traderow entry"><span class="lbl">Entrada</span><b>0.007697</b></div>
+            <div class="traderow stop"><span class="lbl">Stop</span><b>0.00710513</b></div>
+            <div class="traderow alvo"><span class="lbl">Alvo 1</span><b>0.00837993</b></div>
+            <div class="traderow alvo"><span class="lbl">Alvo 2</span><b>0.00888075</b></div>
+            <div class="traderow rr"><span class="lbl">R:R</span><b>1 : 2.00</b></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow">SINAL NA PRÁTICA</div>
+        <h2 style="font-family:var(--display);font-weight:700;font-size:clamp(26px,5vw,38px);margin:0 0 16px;line-height:1.15;">Nada de "acho que vai subir".</h2>
+        <p style="color:var(--muted);font-size:15.5px;margin:0 0 14px;">Esse é um sinal real do sistema: confiança de 99%, com RSI, ADX e VWAP todos alinhados na mesma direção — e entrada, stop, dois alvos e a relação risco/retorno já calculados.</p>
+        <p style="color:var(--muted);font-size:15.5px;margin:0;">Você decide se entra. O sistema só garante que, quando o sinal aparecer, ele já veio com a lição de casa feita.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">PASSO A PASSO</div>
+      <h2>Do sinal ao resultado, sem esforço</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div><h4>O sistema varre o mercado</h4><p>32 pares da Binance Futures, atualizados a cada segundo, comparando indicadores em busca de confluência.</p></div></div>
+      <div class="step"><div class="num">2</div><div><h4>Um sinal forte aparece</h4><p>Só quando várias confirmações técnicas se alinham de verdade — com entrada, stop e alvo já calculados.</p></div></div>
+      <div class="step"><div class="num">3</div><div><h4>Você acompanha em tempo real</h4><p>O diário de trades monitora o preço automaticamente até bater o alvo ou o stop — tudo fica registrado.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">POR QUE CONFIAR</div>
+      <h2>Construído com rigor, não com achismo</h2>
+    </div>
+    <div class="trust">
+      <ul>
+        <li><span class="chk">✓</span>Dados 100% reais, direto da API pública da Binance Futures — sem intermediário.</li>
+        <li><span class="chk">✓</span>Cada ajuste no sistema é testado contra semanas de dados históricos antes de entrar em produção.</li>
+        <li><span class="chk">✓</span>Acesso via navegador, em qualquer dispositivo — sem instalar aplicativo.</li>
+        <li><span class="chk">✓</span>Diário de trades transparente: todo sinal fica registrado, dá certo ou não.</li>
+      </ul>
+      <div class="caveat">⚠️ O Radar Cripto Sinais é uma ferramenta de apoio à decisão técnica — não é recomendação de investimento nem promessa de resultado. Mercado de criptomoedas envolve risco real de perda. Opere com gestão de capital responsável.</div>
+    </div>
+  </div>
+</section>
+
+<section class="finalcta bgfx" id="comprar">
+  <div class="wrap">
+    <div class="badge-ai" style="margin-bottom:20px;"><span class="dot"></span>SISTEMA COM IA</div>
+    <h2>Chega de operar<br>no achismo.</h2>
+    <p>Acesse o Radar Cripto Sinais agora e comece a operar com confluência de indicadores, em tempo real.</p>
+    <a href="#LINK-DE-COMPRA-AQUI" id="link-compra" class="btn-primary" style="font-size:22px;padding:19px 46px;">Quero começar agora</a>
+    <div class="microcopy" style="margin-top:16px;">ACESSO IMEDIATO · DIRETO NO NAVEGADOR</div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="disclaimer">Este material é apenas uma demonstração das funcionalidades do sistema. Não constitui aconselhamento financeiro. Investimentos em criptomoedas são voláteis e envolvem risco de perda total do capital. Rentabilidade passada não garante resultados futuros.</div>
+    <div class="footer-brand">⚡ RADAR CRIPTO SINAIS</div>
+  </div>
+</footer>
+
+</body>
+</html>
